@@ -1,11 +1,16 @@
-import React, { Component } from 'react';
+import React, { PureComponent } from 'react';
 import 'antd/dist/antd.css';
 import styledNormalize from 'styled-normalize';
 import { createGlobalStyle } from 'styled-components';
 import styled from 'styled-components/macro';
-import { Input, Button, Icon, Checkbox } from 'antd';
+import { Button, Alert } from 'antd';
 import { Formik, Form, Field, FieldArray } from 'formik';
 import * as Yup from 'yup';
+import axios from 'axios';
+
+import FormItem from './FormItem';
+import FormItemText from './FormItemText';
+import FormItemCheckbox from './FormItemCheckbox';
 
 const GlobalStyle = createGlobalStyle`
   ${styledNormalize}
@@ -42,61 +47,6 @@ const StyledBox = styled.div`
   border-radius: 5px;
   box-shadow: 0px 15px 35px rgba(0, 0, 0, 1);
 `;
-
-const Label = styled.label`
-  font-weight: bold;
-  color: #0f8ee9;
-`;
-
-const ErrorMessage = styled.span`
-  color: red;
-`;
-
-const FormItem = ({ field, label, icon, form: { touched, errors }, ...props }) => (
-  <>
-    <li>
-      <Label htmlFor={field.name}>{label}:</Label>
-      <Input
-        {...field}
-        {...props}
-        prefix={<Icon type={icon} style={{ color: 'rgba(0,0,0,.25)' }} />}
-      />
-      {touched[field.name] && errors[field.name] && (
-        <ErrorMessage>{errors[field.name]}</ErrorMessage>
-      )}
-    </li>
-  </>
-);
-
-const FormItemText = ({ field, form: { touched, errors }, ...props }) => (
-  <>
-    <li>
-      <Label htmlFor={field.name}>Знание:</Label>
-      <Input
-        type="text"
-        {...field}
-        {...props}
-        prefix={<Icon type="star" style={{ color: 'rgba(0,0,0,.25)' }} />}
-      />
-      {touched[field.name] && errors[field.name] && (
-        <ErrorMessage>{errors[field.name]}</ErrorMessage>
-      )}
-    </li>
-  </>
-);
-
-const FormItemCheckbox = ({ field, form: { touched, errors }, ...props }) => (
-  <>
-    <li>
-      <Checkbox {...field} {...props} checked={field.value}>
-        Принять <a href="https://jaredpalmer.com/formik">условия пользовательского соглашения</a>
-      </Checkbox>
-      {touched[field.name] && errors[field.name] && (
-        <ErrorMessage>{errors[field.name]}</ErrorMessage>
-      )}
-    </li>
-  </>
-);
 
 const validationSchema = Yup.object().shape({
   name: Yup.string()
@@ -168,7 +118,20 @@ const FIELDS = [
   },
 ];
 
-class App extends Component {
+class App extends PureComponent {
+  handleSubmit = async (values, { setErrors, setStatus }) => {
+    try {
+      await axios.post('http://localhost:2400/sign-up', {
+        ...values,
+        skills: values.skills.filter(item => item.length > 0),
+      });
+      setStatus('Новый пользователь зарегистрирован');
+      window.location.reload();
+    } catch (error) {
+      setErrors({ email: 'Пользователь с такой почтой уже есть' });
+    }
+  };
+
   render() {
     return (
       <>
@@ -185,13 +148,15 @@ class App extends Component {
               skills: ['HTML'],
               acceptTerms: true,
             }}
-            onSubmit={(values, actions) => console.log('submit!', values, actions)}
+            onSubmit={this.handleSubmit}
             validationSchema={validationSchema}
           >
-            {({ handleSubmit, isSubmitting, values }) => {
+            {({ handleSubmit, values, status }) => {
+              const message = status ? <Alert message={status} type="success" /> : null;
               return (
                 <Form onSubmit={handleSubmit}>
                   <ol>
+                    {message}
                     {FIELDS.map(({ id, name, label, type, icon }) => (
                       <Field
                         key={id}
@@ -209,6 +174,7 @@ class App extends Component {
                         <>
                           {values.skills.map((skill, index) => (
                             <Field
+                              // eslint-disable-next-line react/no-array-index-key
                               key={index}
                               id={`skills[${index}]`}
                               name={`skills[${index}]`}
@@ -232,7 +198,6 @@ class App extends Component {
                       <Button
                         type="primary"
                         htmlType="submit"
-                        disabled={isSubmitting}
                         style={{ marginBottom: ' 20px' }}
                         block
                       >
