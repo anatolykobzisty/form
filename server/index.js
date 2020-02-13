@@ -18,7 +18,7 @@ const users = [];
 app.post('/sign-up', cors(corsOptions), jsonParser, (req, res) => {
   const { body } = req;
   if (users.find(user => user.email === body.email)) {
-    res.status(401).send();
+    res.status(400).send('Пользователь с такой почтой уже есть');
     return;
   }
   const filteredBody = { ...body };

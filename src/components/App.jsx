@@ -54,7 +54,7 @@ const validationSchema = Yup.object().shape({
     .required('Обязательное поле'),
   password: Yup.string()
     .matches(
-      /^(?=^.{8,40}$)((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z]).*$/,
+      /^(?=^.{8,40}$)[0-9a-zA-Z](?=.*[A-Z])(?=.*[0-9])/,
       'Пароль должен содержать символы A-Z, a-z, 0-9'
     )
     .required('Обязательное поле'),
@@ -126,9 +126,10 @@ class App extends PureComponent {
         skills: values.skills.filter(item => item.length > 0),
       });
       setStatus('Новый пользователь зарегистрирован');
-      window.location.reload();
     } catch (error) {
-      setErrors({ email: 'Пользователь с такой почтой уже есть' });
+      if (error.response.status === 400) {
+        setErrors({ email: error.response.data });
+      }
     }
   };
 
@@ -156,7 +157,7 @@ class App extends PureComponent {
               return (
                 <Form onSubmit={handleSubmit}>
                   <ol>
-                    {message}
+                    <li>{message}</li>
                     {FIELDS.map(({ id, name, label, type, icon }) => (
                       <Field
                         key={id}
