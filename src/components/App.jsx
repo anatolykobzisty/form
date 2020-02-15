@@ -1,9 +1,9 @@
-import React, { PureComponent } from 'react';
+import React, { Component } from 'react';
 import 'antd/dist/antd.css';
 import styledNormalize from 'styled-normalize';
 import { createGlobalStyle } from 'styled-components';
 import styled from 'styled-components/macro';
-import { Button, Alert } from 'antd';
+import { Button, notification } from 'antd';
 import { Formik, Form, Field, FieldArray } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
@@ -118,18 +118,48 @@ const FIELDS = [
   },
 ];
 
-class App extends PureComponent {
-  handleSubmit = async (values, { setErrors, setStatus }) => {
-    try {
-      await axios.post('http://localhost:2400/sign-up', {
-        ...values,
-        skills: values.skills.filter(item => item.length > 0),
-      });
-      setStatus('Новый пользователь зарегистрирован');
-    } catch (error) {
-      if (error.response.status === 400) {
-        setErrors({ email: error.response.data });
+class App extends Component {
+  state = { isNetwork: true };
+
+  componentDidMount = () => {
+    window.addEventListener('online', this.updateIndicator);
+    window.addEventListener('offline', this.updateIndicator);
+  };
+
+  updateIndicator = () => {
+    if (navigator.onLine) {
+      this.setState({ isNetwork: true });
+    } else {
+      this.setState({ isNetwork: false });
+    }
+  };
+
+  openNotificationWithIcon = (type, text) => {
+    notification[type]({
+      description: text,
+    });
+    notification.config({
+      duration: 2,
+    });
+  };
+
+  handleSubmit = async (values, { setErrors }) => {
+    this.updateIndicator();
+    const { isNetwork } = this.state;
+    if (isNetwork) {
+      try {
+        await axios.post('http://localhost:2400/sign-up', {
+          ...values,
+          skills: values.skills.filter(item => item.length > 0),
+        });
+        this.openNotificationWithIcon('success', 'Новый пользователь зарегистрирован');
+      } catch (error) {
+        if (error.response.status === 400) {
+          setErrors({ email: error.response.data });
+        }
       }
+    } else {
+      this.openNotificationWithIcon('error', 'Проверьте подключение к сети');
     }
   };
 
@@ -152,12 +182,10 @@ class App extends PureComponent {
             onSubmit={this.handleSubmit}
             validationSchema={validationSchema}
           >
-            {({ handleSubmit, values, status }) => {
-              const message = status ? <Alert message={status} type="success" /> : null;
+            {({ handleSubmit, values }) => {
               return (
                 <Form onSubmit={handleSubmit}>
                   <ol>
-                    <li>{message}</li>
                     {FIELDS.map(({ id, name, label, type, icon }) => (
                       <Field
                         key={id}
